@@ -296,8 +296,10 @@ export function parseBindingSpecs(params: {
     if (!trimmed) {
       continue;
     }
-    // Split on "@" to separate channel[:accountId] from peerKind:peerId
-    const [channelAccountPart, peerPart] = trimmed.split("@", 2);
+    // Split on the first "@" so peer IDs containing "@" (e.g. 123@g.us) are preserved
+    const atIdx = trimmed.indexOf("@");
+    const channelAccountPart = atIdx < 0 ? trimmed : trimmed.slice(0, atIdx);
+    const peerPart = atIdx < 0 ? undefined : trimmed.slice(atIdx + 1);
     if (!channelAccountPart) {
       errors.push(`Invalid binding "${trimmed}".`);
       continue;

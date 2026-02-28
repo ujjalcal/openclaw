@@ -253,6 +253,27 @@ describe("agents bind/unbind commands", () => {
     expect(runtime.exit).not.toHaveBeenCalled();
   });
 
+  it("preserves peer IDs containing @ (e.g. WhatsApp 123@g.us)", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await agentsBindCommand({ bind: ["whatsapp@group:123456@g.us"] }, runtime);
+
+    expect(writeConfigFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindings: [
+          {
+            agentId: "main",
+            match: { channel: "whatsapp", peer: { kind: "group", id: "123456@g.us" } },
+          },
+        ],
+      }),
+    );
+    expect(runtime.exit).not.toHaveBeenCalled();
+  });
+
   it("unbinds only the peer-scoped binding", async () => {
     readConfigFileSnapshotMock.mockResolvedValue({
       ...baseConfigSnapshot,
