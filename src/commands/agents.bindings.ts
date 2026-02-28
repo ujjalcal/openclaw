@@ -1,3 +1,4 @@
+import { normalizeChatType } from "../channels/chat-type.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { getChannelPlugin, normalizeChannelId } from "../channels/plugins/index.js";
 import type { ChannelId } from "../channels/plugins/types.js";
@@ -295,7 +296,13 @@ export function parseBindingSpecs(params: {
     if (!trimmed) {
       continue;
     }
-    const [channelRaw, accountRaw] = trimmed.split(":", 2);
+    // Split on "@" to separate channel[:accountId] from peerKind:peerId
+    const [channelAccountPart, peerPart] = trimmed.split("@", 2);
+    if (!channelAccountPart) {
+      errors.push(`Invalid binding "${trimmed}".`);
+      continue;
+    }
+    const [channelRaw, accountRaw] = channelAccountPart.split(":", 2);
     const channel = normalizeChannelId(channelRaw);
     if (!channel) {
       errors.push(`Unknown channel "${channelRaw}".`);
@@ -315,6 +322,26 @@ export function parseBindingSpecs(params: {
     const match: AgentBinding["match"] = { channel };
     if (accountId) {
       match.accountId = accountId;
+    }
+    // Parse optional peer spec (@peerKind:peerId)
+    if (peerPart !== undefined) {
+      const colonIdx = peerPart.indexOf(":");
+      if (colonIdx < 0) {
+        errors.push(`Invalid peer spec "${peerPart}" in "${trimmed}" (expected peerKind:peerId).`);
+        continue;
+      }
+      const peerKindRaw = peerPart.slice(0, colonIdx);
+      const peerId = peerPart.slice(colonIdx + 1).trim();
+      const peerKind = normalizeChatType(peerKindRaw);
+      if (!peerKind) {
+        errors.push(`Unknown peer kind "${peerKindRaw}" in "${trimmed}".`);
+        continue;
+      }
+      if (!peerId) {
+        errors.push(`Invalid binding "${trimmed}" (empty peer id).`);
+        continue;
+      }
+      match.peer = { kind: peerKind, id: peerId };
     }
     bindings.push({ agentId, match });
   }

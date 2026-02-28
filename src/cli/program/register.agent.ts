@@ -127,8 +127,8 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.openclaw.ai/cli/age
     .description("Add routing bindings for an agent")
     .option("--agent <id>", "Agent id (defaults to current default agent)")
     .option(
-      "--bind <channel[:accountId]>",
-      "Binding to add (repeatable). If omitted, accountId is resolved by channel defaults/hooks.",
+      "--bind <channel[:accountId][@peerKind:peerId]>",
+      "Binding to add (repeatable). Peer kinds: direct, group, channel. If omitted, accountId is resolved by channel defaults/hooks.",
       collectOption,
       [],
     )
@@ -150,7 +150,12 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.openclaw.ai/cli/age
     .command("unbind")
     .description("Remove routing bindings for an agent")
     .option("--agent <id>", "Agent id (defaults to current default agent)")
-    .option("--bind <channel[:accountId]>", "Binding to remove (repeatable)", collectOption, [])
+    .option(
+      "--bind <channel[:accountId][@peerKind:peerId]>",
+      "Binding to remove (repeatable)",
+      collectOption,
+      [],
+    )
     .option("--all", "Remove all bindings for this agent", false)
     .option("--json", "Output JSON summary", false)
     .action(async (opts) => {

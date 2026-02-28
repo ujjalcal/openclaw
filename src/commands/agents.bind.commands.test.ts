@@ -155,6 +155,128 @@ describe("agents bind/unbind commands", () => {
     expect(runtime.exit).toHaveBeenCalledWith(1);
   });
 
+  it("binds with peer spec and no account id", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await agentsBindCommand({ bind: ["slack@channel:C0AJ0QAQ23T"] }, runtime);
+
+    expect(writeConfigFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindings: [
+          {
+            agentId: "main",
+            match: { channel: "slack", peer: { kind: "channel", id: "C0AJ0QAQ23T" } },
+          },
+        ],
+      }),
+    );
+    expect(runtime.exit).not.toHaveBeenCalled();
+  });
+
+  it("binds with peer spec and account id", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await agentsBindCommand({ bind: ["slack:work@channel:C0AJ0QAQ23T"] }, runtime);
+
+    expect(writeConfigFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindings: [
+          {
+            agentId: "main",
+            match: {
+              channel: "slack",
+              accountId: "work",
+              peer: { kind: "channel", id: "C0AJ0QAQ23T" },
+            },
+          },
+        ],
+      }),
+    );
+    expect(runtime.exit).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown peer kind", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await agentsBindCommand({ bind: ["slack@badkind:C123"] }, runtime);
+
+    expect(writeConfigFileMock).not.toHaveBeenCalled();
+    expect(runtime.error).toHaveBeenCalledWith(
+      expect.stringContaining('Unknown peer kind "badkind"'),
+    );
+    expect(runtime.exit).toHaveBeenCalledWith(1);
+  });
+
+  it("rejects empty peer id", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await agentsBindCommand({ bind: ["slack@channel:"] }, runtime);
+
+    expect(writeConfigFileMock).not.toHaveBeenCalled();
+    expect(runtime.error).toHaveBeenCalledWith(expect.stringContaining("empty peer id"));
+    expect(runtime.exit).toHaveBeenCalledWith(1);
+  });
+
+  it("peer binding does not conflict with channel-level binding for the same agent", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {
+        bindings: [{ agentId: "main", match: { channel: "slack" } }],
+      },
+    });
+
+    await agentsBindCommand({ bind: ["slack@channel:C0AJ0QAQ23T"] }, runtime);
+
+    expect(writeConfigFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindings: [
+          { agentId: "main", match: { channel: "slack" } },
+          {
+            agentId: "main",
+            match: { channel: "slack", peer: { kind: "channel", id: "C0AJ0QAQ23T" } },
+          },
+        ],
+      }),
+    );
+    expect(runtime.exit).not.toHaveBeenCalled();
+  });
+
+  it("unbinds only the peer-scoped binding", async () => {
+    readConfigFileSnapshotMock.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {
+        bindings: [
+          { agentId: "main", match: { channel: "slack" } },
+          {
+            agentId: "main",
+            match: { channel: "slack", peer: { kind: "channel", id: "C0AJ0QAQ23T" } },
+          },
+        ],
+      },
+    });
+
+    await agentsUnbindCommand({ bind: ["slack@channel:C0AJ0QAQ23T"] }, runtime);
+
+    expect(writeConfigFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindings: [{ agentId: "main", match: { channel: "slack" } }],
+      }),
+    );
+    expect(runtime.exit).not.toHaveBeenCalled();
+  });
+
   it("keeps role-based bindings when removing channel-level discord binding", async () => {
     readConfigFileSnapshotMock.mockResolvedValue({
       ...baseConfigSnapshot,
